@@ -124,6 +124,10 @@ class FuelListScreen(carContext: CarContext) : Screen(carContext) {
             val row = Row.Builder()
                 .setTitle(station.name ?: station.brand ?: "Distributore")
                 .addText(priceLine(station))
+                .setBrowsable(true)
+                .setOnClickListener {
+                    screenManager.push(StationDetailScreen(carContext, station))
+                }
             station.location?.let {
                 row.setMetadata(
                     Metadata.Builder()

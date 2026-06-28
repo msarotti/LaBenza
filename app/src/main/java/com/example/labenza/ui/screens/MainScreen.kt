@@ -1,25 +1,35 @@
 package com.example.labenza.ui.screens
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.example.labenza.data.model.PlaceSuggestion
 import com.example.labenza.data.model.Station
 import com.example.labenza.ui.viewmodel.FuelResult
 import com.example.labenza.ui.viewmodel.FuelUiState
 import com.example.labenza.ui.viewmodel.FuelViewModel
+import com.example.labenza.util.MapNavigation
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,20 +41,36 @@ fun MainScreen(viewModel: FuelViewModel) {
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("LaBenza - Prezzi Carburante") })
+            CenterAlignedTopAppBar(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.LocalGasStation, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("LaBenza", fontWeight = FontWeight.Bold)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
+            Spacer(modifier = Modifier.height(12.dp))
+
             OutlinedTextField(
                 value = query,
                 onValueChange = viewModel::onQueryChange,
                 label = { Text("Cerca per città o indirizzo") },
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+                leadingIcon = { Icon(Icons.Default.Place, contentDescription = null) },
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
                     if (query.isNotEmpty()) {
@@ -55,37 +81,41 @@ fun MainScreen(viewModel: FuelViewModel) {
                 }
             )
 
-            // Autocomplete suggestions (OpenStreetMap / Nominatim).
             if (suggestions.isNotEmpty()) {
-                SuggestionsList(
-                    suggestions = suggestions,
-                    onSelect = viewModel::selectSuggestion
-                )
+                Spacer(modifier = Modifier.height(4.dp))
+                SuggestionsList(suggestions = suggestions, onSelect = viewModel::selectSuggestion)
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Button(
+            FilledTonalButton(
                 onClick = { viewModel.fetchByLocation() },
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
             ) {
-                Icon(Icons.Default.LocationOn, contentDescription = null)
+                Icon(Icons.Default.MyLocation, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Usa la mia posizione")
+                Text("Usa la mia posizione", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             when (val state = uiState) {
-                is FuelUiState.Idle -> CenterMessage("Inserisci un indirizzo o usa la posizione GPS")
+                is FuelUiState.Idle -> CenterMessage(
+                    icon = Icons.Default.LocalGasStation,
+                    text = "Inserisci un indirizzo o usa la posizione GPS per trovare i distributori più vicini."
+                )
                 is FuelUiState.Loading -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator() }
                 is FuelUiState.Success -> ResultsList(state.result)
                 is FuelUiState.Error -> CenterMessage(
+                    icon = Icons.Default.Place,
                     text = state.message,
-                    color = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -102,7 +132,7 @@ private fun SuggestionsList(
             .fillMaxWidth()
             .heightIn(max = 240.dp),
         tonalElevation = 3.dp,
-        shape = MaterialTheme.shapes.medium
+        shape = RoundedCornerShape(16.dp)
     ) {
         LazyColumn {
             items(suggestions) { suggestion ->
@@ -110,7 +140,7 @@ private fun SuggestionsList(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onSelect(suggestion) }
-                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -129,11 +159,29 @@ private fun SuggestionsList(
 
 @Composable
 private fun CenterMessage(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
-    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(text = text, color = color)
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(24.dp)
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = text,
+                color = tint,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
     }
 }
 
@@ -141,88 +189,191 @@ private fun CenterMessage(
 private fun ResultsList(result: FuelResult) {
     Column {
         Text(
-            text = "Risultati vicino a: ${result.location.label}",
+            text = "Vicino a ${result.location.label}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
 
-        AveragePriceCard(result.avgBenzina, result.avgDiesel)
-
         Spacer(modifier = Modifier.height(8.dp))
 
+        Row(modifier = Modifier.fillMaxWidth()) {
+            AveragePriceTile(
+                label = "Benzina media",
+                price = result.avgBenzina,
+                container = MaterialTheme.colorScheme.secondaryContainer,
+                onContainer = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            AveragePriceTile(
+                label = "Diesel media",
+                price = result.avgDiesel,
+                container = MaterialTheme.colorScheme.tertiaryContainer,
+                onContainer = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         if (result.stations.isEmpty()) {
-            CenterMessage("Nessun distributore trovato nelle vicinanze.")
+            CenterMessage(
+                icon = Icons.Default.LocalGasStation,
+                text = "Nessun distributore trovato nelle vicinanze."
+            )
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                items(result.stations) { station -> DistributorItem(station) }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(result.stations) { station -> StationCard(station) }
             }
         }
     }
 }
 
 @Composable
-fun AveragePriceCard(benzina: Double?, diesel: Double?) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+private fun AveragePriceTile(
+    label: String,
+    price: Double?,
+    container: Color,
+    onContainer: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        color = container,
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("Media zona:", fontWeight = FontWeight.Bold)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Benzina: ${formatPrice(benzina)}")
-                Text("Diesel: ${formatPrice(diesel)}")
-            }
+            Text(label, style = MaterialTheme.typography.labelMedium, color = onContainer)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = formatPrice(price),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = onContainer
+            )
         }
     }
 }
 
 @Composable
-fun DistributorItem(station: Station) {
+private fun StationCard(station: Station) {
+    val context = LocalContext.current
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = station.name ?: station.brand ?: "Distributore",
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-            val subtitle = listOfNotNull(station.brand, station.address)
-                .filter { it.isNotBlank() }
-                .joinToString(" · ")
-            if (subtitle.isNotBlank()) {
-                Text(text = subtitle, style = MaterialTheme.typography.bodySmall)
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.LocalGasStation,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = station.name ?: station.brand ?: "Distributore",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    val subtitle = listOfNotNull(station.brand, station.address)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · ")
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+                station.distanceKm?.let {
+                    Text(
+                        text = "${String.format(Locale.ITALY, "%.1f", it)} km",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                PriceText("Benzina", station.benzinaPrice)
-                PriceText("Diesel", station.dieselPrice)
-            }
-            station.distanceKm?.let {
-                Text(
-                    text = "Distanza: ${String.format(Locale.ITALY, "%.1f", it)} km",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.align(Alignment.End)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                PricePill(
+                    label = "Benzina",
+                    price = station.benzinaPrice,
+                    container = MaterialTheme.colorScheme.secondaryContainer,
+                    onContainer = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                PricePill(
+                    label = "Diesel",
+                    price = station.dieselPrice,
+                    container = MaterialTheme.colorScheme.tertiaryContainer,
+                    onContainer = MaterialTheme.colorScheme.onTertiaryContainer
                 )
             }
+
+            station.location?.let { location ->
+                Spacer(modifier = Modifier.height(12.dp))
+                FilledTonalButton(
+                    onClick = {
+                        val intent = Intent(
+                            Intent.ACTION_VIEW,
+                            MapNavigation.geoUri(location.lat, location.lng, station.name)
+                        )
+                        runCatching { ContextCompat.startActivity(context, intent, null) }
+                            .onFailure {
+                                Toast.makeText(
+                                    context,
+                                    "Nessuna app di mappe installata.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Directions, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Portami qui")
+                }
+            }
         }
     }
 }
 
 @Composable
-fun PriceText(label: String, price: Double?) {
-    Column {
-        Text(text = label, style = MaterialTheme.typography.labelMedium)
-        Text(
-            text = formatPrice(price),
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
+private fun PricePill(
+    label: String,
+    price: Double?,
+    container: Color,
+    onContainer: Color
+) {
+    Surface(color = container, shape = RoundedCornerShape(12.dp)) {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = onContainer)
+            Text(
+                text = formatPrice(price),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = onContainer
+            )
+        }
     }
 }
 
