@@ -18,8 +18,11 @@ import androidx.car.app.model.Template
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.labenza.data.model.Station
+import com.example.labenza.data.model.SortOrder
 import com.example.labenza.data.repository.FuelRepository
 import com.example.labenza.location.LocationHelper
+import com.example.labenza.ui.screens.SortOptionScreen
+import com.example.labenza.car.SearchScreen
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -40,6 +43,8 @@ class FuelListScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     private var state: State = State.Loading
+
+    private var currentSortOrder: SortOrder = SortOrder.NONE
 
     init {
         loadData()
@@ -63,14 +68,23 @@ class FuelListScreen(carContext: CarContext) : Screen(carContext) {
                 return@launch
             }
             fuelRepository.getNearbyStations(coords.first, coords.second)
-                .onSuccess {
-                    state = State.Success(it)
+                .onSuccess { stations ->
+                    val sortedStations = sortStations(stations, currentSortOrder)
+                    state = State.Success(sortedStations)
                     invalidate()
                 }
                 .onFailure {
                     state = State.Error(it.message ?: "Errore di rete.")
                     invalidate()
                 }
+        }
+    }
+
+    private fun sortStations(stations: List<Station>, sortOrder: SortOrder): List<Station> {
+        return when (sortOrder) {
+            SortOrder.PRICE_LOW_TO_HIGH -> stations.sortedBy { it.benzinaPrice ?: Double.MAX_VALUE }
+            SortOrder.PRICE_HIGH_TO_LOW -> stations.sortedByDescending { it.benzinaPrice ?: Double.MIN_VALUE }
+            else -> stations
         }
     }
 
@@ -100,8 +114,36 @@ class FuelListScreen(carContext: CarContext) : Screen(carContext) {
                 ActionStrip.Builder()
                     .addAction(
                         Action.Builder()
-                            .setTitle("Aggiorna")
-                            .setOnClickListener { loadData() }
+                            .setTitle("Cerca")
+                            .setOnClickListener {
+                                screenManager.push(SearchScreen(carContext) { lat, lng, label ->
+                                    lifecycleScope.launch {
+                                        state = State.Loading
+                                        invalidate()
+                                        fuelRepository.getNearbyStations(lat, lng)
+                                            .onSuccess { stations ->
+                                                val sortedStations = sortStations(stations, currentSortOrder)
+                                                state = State.Success(sortedStations)
+                                                invalidate()
+                                            }
+                                            .onFailure {
+                                                state = State.Error(it.message ?: "Errore di rete.")
+                                                invalidate()
+                                            }
+                                    }
+                                })
+                            }
+                            .build()
+                    )
+                    .addAction(
+                        Action.Builder()
+                            .setTitle("Ordina")
+                            .setOnClickListener {
+                                screenManager.push(SortOptionScreen(carContext) { order ->
+                                    currentSortOrder = order
+                                    loadData()
+                                })
+                            }
                             .build()
                     )
                     .build()
@@ -169,9 +211,9 @@ class FuelListScreen(carContext: CarContext) : Screen(carContext) {
 
     private fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(carContext, Manifest.permission.ACCESS_FINE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(carContext, Manifest.permission.ACCESS_COARSE_LOCATION) ==
-            PackageManager.PERMISSION_GRANTED
+                PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(carContext, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
 
     private fun requestLocationPermission() {
         val permissions = listOf(
