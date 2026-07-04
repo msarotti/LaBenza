@@ -2,14 +2,22 @@ package com.example.labenza.ui.screens
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.LocalGasStation
@@ -35,10 +43,27 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(viewModel: FuelViewModel) {
+fun MainScreen(
+    viewModel: FuelViewModel,
+    onBack: (() -> Unit)? = null
+) {
     val uiState by viewModel.uiState.collectAsState()
     val query by viewModel.query.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
+
+    // Scroll state of the results list, hoisted so the "use my location" button can
+    // hide once the user starts scrolling through the results.
+    val listState = rememberLazyListState()
+    val successResult = (uiState as? FuelUiState.Success)?.result
+    // Reset scroll (and thus re-show the button) whenever a new search comes in.
+    LaunchedEffect(successResult?.location?.label) {
+        listState.scrollToItem(0)
+    }
+    val locationButtonVisible by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -48,6 +73,16 @@ fun MainScreen(viewModel: FuelViewModel) {
                         Icon(Icons.Default.LocalGasStation, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("LaBenza", fontWeight = FontWeight.Bold)
+                    }
+                },
+                navigationIcon = {
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Indietro"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -96,19 +131,26 @@ fun MainScreen(viewModel: FuelViewModel) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            FilledTonalButton(
-                onClick = { viewModel.fetchByLocation() },
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
+            AnimatedVisibility(
+                visible = locationButtonVisible,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Usa la mia posizione", fontWeight = FontWeight.SemiBold)
+                Column {
+                    FilledTonalButton(
+                        onClick = { viewModel.fetchByLocation() },
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                    ) {
+                        Icon(Icons.Default.MyLocation, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Usa la mia posizione", fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             when (val state = uiState) {
                 is FuelUiState.Idle -> CenterMessage(
@@ -119,7 +161,7 @@ fun MainScreen(viewModel: FuelViewModel) {
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator() }
-                is FuelUiState.Success -> ResultsList(state.result)
+                is FuelUiState.Success -> ResultsList(state.result, listState)
                 is FuelUiState.Error -> CenterMessage(
                     icon = Icons.Default.Place,
                     text = state.message,
@@ -220,7 +262,7 @@ private fun CenterMessage(
 }
 
 @Composable
-private fun ResultsList(result: FuelResult) {
+private fun ResultsList(result: FuelResult, listState: LazyListState) {
     if (result.stations.isEmpty()) {
         Column {
             Text(
@@ -242,6 +284,7 @@ private fun ResultsList(result: FuelResult) {
         }
     } else {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(10.dp),
             contentPadding = PaddingValues(bottom = 16.dp)
