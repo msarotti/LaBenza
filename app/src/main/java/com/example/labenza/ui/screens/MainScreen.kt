@@ -221,49 +221,70 @@ private fun CenterMessage(
 
 @Composable
 private fun ResultsList(result: FuelResult) {
-    Column {
-        Text(
-            text = "Vicino a ${result.location.label}",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            AveragePriceTile(
-                label = "Benzina media",
-                price = result.avgBenzina,
-                container = MaterialTheme.colorScheme.secondaryContainer,
-                onContainer = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.weight(1f)
+    if (result.stations.isEmpty()) {
+        Column {
+            Text(
+                text = "Vicino a ${result.location.label}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.width(12.dp))
-            AveragePriceTile(
-                label = "Diesel media",
-                price = result.avgDiesel,
-                container = MaterialTheme.colorScheme.tertiaryContainer,
-                onContainer = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.weight(1f)
-            )
-        }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        if (result.stations.isEmpty()) {
+            AveragePriceRow(result)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             CenterMessage(
                 icon = Icons.Default.LocalGasStation,
                 text = "Nessun distributore trovato nelle vicinanze."
             )
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(result.stations) { station -> StationCard(station) }
-            }
         }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            item {
+                Text(
+                    text = "Vicino a ${result.location.label}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            item {
+                AveragePriceRow(result)
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(2.dp))
+            }
+
+            items(result.stations) { station -> StationCard(station) }
+        }
+    }
+}
+
+@Composable
+private fun AveragePriceRow(result: FuelResult) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        AveragePriceTile(
+            label = "Benzina media",
+            price = result.avgBenzina,
+            container = MaterialTheme.colorScheme.secondaryContainer,
+            onContainer = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.weight(1f)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        AveragePriceTile(
+            label = "Diesel media",
+            price = result.avgDiesel,
+            container = MaterialTheme.colorScheme.tertiaryContainer,
+            onContainer = MaterialTheme.colorScheme.onTertiaryContainer,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
