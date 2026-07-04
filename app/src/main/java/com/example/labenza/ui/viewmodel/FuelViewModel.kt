@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.labenza.data.model.PlaceSuggestion
 import com.example.labenza.data.model.Station
+import com.example.labenza.data.model.SortOrder
 import com.example.labenza.data.repository.FuelRepository
 import com.example.labenza.data.repository.GeocodingRepository
 import com.example.labenza.location.LocationHelper
@@ -46,6 +47,9 @@ class FuelViewModel(
     private val _suggestions = MutableStateFlow<List<PlaceSuggestion>>(emptyList())
     val suggestions: StateFlow<List<PlaceSuggestion>> = _suggestions.asStateFlow()
 
+    private val _sortOrder = MutableStateFlow<SortOrder>(SortOrder.NONE)
+    val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
+
     // Set to true right after a suggestion is picked, to suppress re-querying that text.
     private var suppressNextQuery = false
 
@@ -71,6 +75,25 @@ class FuelViewModel(
 
     init {
         observeQuery()
+    }
+
+    fun setSortOrder(order: SortOrder) {
+        _sortOrder.value = order
+        // Re-apply sorting to the current state if it's Success
+        val currentState = _uiState.value
+        if (currentState is FuelUiState.Success) {
+            val stations = currentState.result.stations
+            val sorted = sortStations(stations, order)
+            _uiState.value = FuelUiState.Success(currentState.result.copy(stations = sorted))
+        }
+    }
+
+    private fun sortStations(stations: List<Station>, order: SortOrder): List<Station> {
+        return when (order) {
+            SortOrder.PRICE_LOW_TO_HIGH -> stations.sortedBy { it.benzinaPrice ?: Double.MAX_VALUE }
+            SortOrder.PRICE_HIGH_TO_LOW -> stations.sortedByDescending { it.benzinaPrice ?: Double.MIN_VALUE }
+            else -> stations
+        }
     }
 
     fun onQueryChange(text: String) {
@@ -107,10 +130,12 @@ class FuelViewModel(
     private suspend fun fetchPrices(location: LocationInfo) {
         fuelRepository.getNearbyStations(location.lat, location.lng)
             .onSuccess { stations ->
+                val sortedStations = sortStations(stations, _sortOrder.value)
+
                 _uiState.value = FuelUiState.Success(
                     FuelResult(
                         location = location,
-                        stations = stations,
+                        stations = sortedStations,
                         avgBenzina = stations.mapNotNull { it.benzinaPrice }.averageOrNull(),
                         avgDiesel = stations.mapNotNull { it.dieselPrice }.averageOrNull()
                     )

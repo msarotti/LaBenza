@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.example.labenza.data.model.PlaceSuggestion
 import com.example.labenza.data.model.Station
+import com.example.labenza.data.model.SortOrder
 import com.example.labenza.ui.viewmodel.FuelResult
 import com.example.labenza.ui.viewmodel.FuelUiState
 import com.example.labenza.ui.viewmodel.FuelViewModel
@@ -88,6 +89,13 @@ fun MainScreen(viewModel: FuelViewModel) {
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            SortOptions(
+                currentOrder = viewModel.sortOrder.collectAsState().value,
+                onOrderChange = viewModel::setSortOrder
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             FilledTonalButton(
                 onClick = { viewModel.fetchByLocation() },
                 shape = RoundedCornerShape(16.dp),
@@ -119,6 +127,32 @@ fun MainScreen(viewModel: FuelViewModel) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun SortOptions(
+    currentOrder: SortOrder,
+    onOrderChange: (SortOrder) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = currentOrder == SortOrder.PRICE_LOW_TO_HIGH,
+            onClick = { 
+                onOrderChange(if (currentOrder == SortOrder.PRICE_LOW_TO_HIGH) SortOrder.NONE else SortOrder.PRICE_LOW_TO_HIGH)
+            },
+            label = { Text("Prezzo ↑") }
+        )
+        FilterChip(
+            selected = currentOrder == SortOrder.PRICE_HIGH_TO_LOW,
+            onClick = { 
+                onOrderChange(if (currentOrder == SortOrder.PRICE_HIGH_TO_LOW) SortOrder.NONE else SortOrder.PRICE_HIGH_TO_LOW)
+            },
+            label = { Text("Prezzo ↓") }
+        )
     }
 }
 
