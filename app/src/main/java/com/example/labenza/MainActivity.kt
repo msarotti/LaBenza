@@ -15,6 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.labenza.data.repository.AveragePriceRepository
+import com.example.labenza.data.repository.FavoritesRepository
 import com.example.labenza.data.repository.FuelRepository
 import com.example.labenza.data.repository.GeocodingRepository
 import com.example.labenza.location.LocationHelper
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
         val repository = FuelRepository()
         val geocodingRepository = GeocodingRepository()
         val averagePriceRepository = AveragePriceRepository()
+        val favoritesRepository = FavoritesRepository(this)
         val locationHelper = LocationHelper(this)
         
         enableEdgeToEdge()
@@ -43,6 +45,7 @@ class MainActivity : ComponentActivity() {
                                 repository,
                                 geocodingRepository,
                                 averagePriceRepository,
+                                favoritesRepository,
                                 locationHelper
                             ) as T
                         }

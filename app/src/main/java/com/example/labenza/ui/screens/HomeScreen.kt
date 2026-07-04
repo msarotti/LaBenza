@@ -1,19 +1,24 @@
 package com.example.labenza.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.labenza.data.model.Country
+import com.example.labenza.data.model.FavoriteStation
 import com.example.labenza.ui.viewmodel.AverageUiState
 import com.example.labenza.ui.viewmodel.FuelViewModel
 import java.util.Locale
@@ -32,6 +37,7 @@ fun HomeScreen(
 ) {
     var selectedCountry by remember { mutableStateOf(Country.default) }
     val averageState by viewModel.averages.collectAsState()
+    val favorites by viewModel.favorites.collectAsState()
 
     Scaffold(
         topBar = {
@@ -150,7 +156,61 @@ fun HomeScreen(
                 Text("Prezzo per regione", fontWeight = FontWeight.SemiBold)
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                text = "Preferiti",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (favorites.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Text(
+                        text = "Nessun distributore preferito. Tocca la stella su un " +
+                            "distributore nella ricerca per aggiungerlo qui.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 8.dp)
+                ) {
+                    items(favorites, key = { it.id }) { favorite ->
+                        FavoriteStationCard(
+                            favorite = favorite,
+                            onRemove = { viewModel.removeFavorite(favorite.id) },
+                            onSearchHere = {
+                                val lat = favorite.lat
+                                val lng = favorite.lng
+                                if (lat != null && lng != null) {
+                                    val label = favorite.name
+                                        ?: favorite.brand
+                                        ?: favorite.address
+                                        ?: "Distributore preferito"
+                                    viewModel.searchNearby(lat, lng, label)
+                                    onNavigateToSearch()
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             Button(
                 onClick = onNavigateToSearch,
@@ -206,6 +266,63 @@ private fun CountrySelector(
                         expanded = false
                     }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteStationCard(
+    favorite: FavoriteStation,
+    onRemove: () -> Unit,
+    onSearchHere: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = favorite.name ?: favorite.brand ?: "Distributore",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
+                    )
+                    val subtitle = listOfNotNull(favorite.brand, favorite.address)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" · ")
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            text = subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+                IconButton(onClick = onRemove) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = "Rimuovi dai preferiti",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            if (favorite.lat != null && favorite.lng != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                FilledTonalButton(
+                    onClick = onSearchHere,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cerca da qui")
+                }
             }
         }
     }

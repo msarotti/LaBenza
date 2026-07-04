@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +52,8 @@ fun MainScreen(
     val uiState by viewModel.uiState.collectAsState()
     val query by viewModel.query.collectAsState()
     val suggestions by viewModel.suggestions.collectAsState()
+    val favorites by viewModel.favorites.collectAsState()
+    val favoriteIds = favorites.mapTo(mutableSetOf()) { it.id }
 
     // Scroll state of the results list, hoisted so the "use my location" button can
     // hide once the user starts scrolling through the results.
@@ -161,7 +165,12 @@ fun MainScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) { CircularProgressIndicator() }
-                is FuelUiState.Success -> ResultsList(state.result, listState)
+                is FuelUiState.Success -> ResultsList(
+                    result = state.result,
+                    listState = listState,
+                    favoriteIds = favoriteIds,
+                    onToggleFavorite = viewModel::toggleFavorite
+                )
                 is FuelUiState.Error -> CenterMessage(
                     icon = Icons.Default.Place,
                     text = state.message,
@@ -262,7 +271,12 @@ private fun CenterMessage(
 }
 
 @Composable
-private fun ResultsList(result: FuelResult, listState: LazyListState) {
+private fun ResultsList(
+    result: FuelResult,
+    listState: LazyListState,
+    favoriteIds: Set<Long>,
+    onToggleFavorite: (Station) -> Unit
+) {
     if (result.stations.isEmpty()) {
         Column {
             Text(
@@ -305,7 +319,13 @@ private fun ResultsList(result: FuelResult, listState: LazyListState) {
                 Spacer(modifier = Modifier.height(2.dp))
             }
 
-            items(result.stations) { station -> StationCard(station) }
+            items(result.stations) { station ->
+                StationCard(
+                    station = station,
+                    isFavorite = station.id in favoriteIds,
+                    onToggleFavorite = { onToggleFavorite(station) }
+                )
+            }
         }
     }
 }
@@ -358,7 +378,11 @@ private fun AveragePriceTile(
 }
 
 @Composable
-private fun StationCard(station: Station) {
+private fun StationCard(
+    station: Station,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit
+) {
     val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -405,6 +429,17 @@ private fun StationCard(station: Station) {
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                IconButton(onClick = onToggleFavorite) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (isFavorite) {
+                            "Rimuovi dai preferiti"
+                        } else "Aggiungi ai preferiti",
+                        tint = if (isFavorite) {
+                            MaterialTheme.colorScheme.primary
+                        } else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -455,25 +490,3 @@ private fun StationCard(station: Station) {
     }
 }
 
-@Composable
-private fun PricePill(
-    label: String,
-    price: Double?,
-    container: Color,
-    onContainer: Color
-) {
-    Surface(color = container, shape = RoundedCornerShape(12.dp)) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-            Text(label, style = MaterialTheme.typography.labelSmall, color = onContainer)
-            Text(
-                text = formatPrice(price),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = onContainer
-            )
-        }
-    }
-}
-
-private fun formatPrice(price: Double?): String =
-    if (price != null) "${String.format(Locale.ITALY, "%.3f", price)} €/l" else "N/A"

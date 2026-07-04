@@ -2,11 +2,14 @@ package com.example.labenza.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.labenza.data.model.FavoriteStation
 import com.example.labenza.data.model.RegionalAverages
 import com.example.labenza.data.model.PlaceSuggestion
 import com.example.labenza.data.model.Station
 import com.example.labenza.data.model.SortOrder
+import com.example.labenza.data.model.toFavorite
 import com.example.labenza.data.repository.AveragePriceRepository
+import com.example.labenza.data.repository.FavoritesRepository
 import com.example.labenza.data.repository.FuelRepository
 import com.example.labenza.data.repository.GeocodingRepository
 import com.example.labenza.location.LocationHelper
@@ -44,11 +47,15 @@ class FuelViewModel(
     private val fuelRepository: FuelRepository,
     private val geocodingRepository: GeocodingRepository,
     private val averagePriceRepository: AveragePriceRepository,
+    private val favoritesRepository: FavoritesRepository,
     private val locationHelper: LocationHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FuelUiState>(FuelUiState.Idle)
     val uiState: StateFlow<FuelUiState> = _uiState.asStateFlow()
+
+    private val _favorites = MutableStateFlow<List<FavoriteStation>>(emptyList())
+    val favorites: StateFlow<List<FavoriteStation>> = _favorites.asStateFlow()
 
     private val _averages = MutableStateFlow<AverageUiState>(AverageUiState.Loading)
     val averages: StateFlow<AverageUiState> = _averages.asStateFlow()
@@ -88,6 +95,25 @@ class FuelViewModel(
     init {
         observeQuery()
         loadAverages()
+        _favorites.value = favoritesRepository.load()
+    }
+
+    /** Adds the station to favorites if absent, otherwise removes it. */
+    fun toggleFavorite(station: Station) {
+        val current = _favorites.value
+        val updated = if (current.any { it.id == station.id }) {
+            current.filterNot { it.id == station.id }
+        } else {
+            current + station.toFavorite()
+        }
+        _favorites.value = updated
+        favoritesRepository.save(updated)
+    }
+
+    fun removeFavorite(id: Long) {
+        val updated = _favorites.value.filterNot { it.id == id }
+        _favorites.value = updated
+        favoritesRepository.save(updated)
     }
 
     fun loadAverages() {
@@ -129,6 +155,15 @@ class FuelViewModel(
         viewModelScope.launch {
             _uiState.value = FuelUiState.Loading
             fetchPrices(LocationInfo(suggestion.lat, suggestion.lng, suggestion.label))
+        }
+    }
+
+    /** Runs a station search centered on the given coordinates (e.g. a favorite). */
+    fun searchNearby(lat: Double, lng: Double, label: String) {
+        viewModelScope.launch {
+            _uiState.value = FuelUiState.Loading
+            _suggestions.value = emptyList()
+            fetchPrices(LocationInfo(lat, lng, label))
         }
     }
 
