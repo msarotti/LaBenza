@@ -2,27 +2,16 @@ package com.example.labenza.data.model
 
 /**
  * A country whose fuel prices the app can show. Only [ITALY] is currently active;
- * the enum exists so the home-screen country selector and its national averages
- * can grow to other European countries later.
- *
- * [avgBenzina] / [avgDiesel] are **static placeholder** national averages (€/l).
- * TODO: replace with a live national-average source (MIMIT weekly bulletin has no
- * clean JSON API yet); the app currently only has the zone-search endpoint.
+ * the enum exists so the home-screen country selector can grow to other European
+ * countries later. National-average prices are fetched from a data source (see
+ * [com.example.labenza.data.repository.AveragePriceRepository]), not stored here.
  */
 enum class Country(
     val displayName: String,
     val flag: String,
-    val available: Boolean,
-    val avgBenzina: Double?,
-    val avgDiesel: Double?
+    val available: Boolean
 ) {
-    ITALY(
-        displayName = "Italia",
-        flag = "🇮🇹",
-        available = true,
-        avgBenzina = 1.789,
-        avgDiesel = 1.699
-    );
+    ITALY(displayName = "Italia", flag = "🇮🇹", available = true);
 
     companion object {
         val default = ITALY

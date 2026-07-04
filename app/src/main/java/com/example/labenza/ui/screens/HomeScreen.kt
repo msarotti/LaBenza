@@ -3,6 +3,7 @@ package com.example.labenza.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -13,16 +14,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.labenza.data.model.Country
+import com.example.labenza.ui.viewmodel.AverageUiState
+import com.example.labenza.ui.viewmodel.FuelViewModel
 import java.util.Locale
 
 /**
  * Landing screen: pick a country (only Italy for now), see its national average
- * benzina/diesel price, and jump to the station-search screen.
+ * benzina/diesel price (fetched from MIMIT's regional CSV), and jump to the
+ * station-search screen.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onNavigateToSearch: () -> Unit) {
+fun HomeScreen(
+    viewModel: FuelViewModel,
+    onNavigateToSearch: () -> Unit,
+    onNavigateToRegional: () -> Unit
+) {
     var selectedCountry by remember { mutableStateOf(Country.default) }
+    val averageState by viewModel.averages.collectAsState()
 
     Scaffold(
         topBar = {
@@ -70,10 +79,14 @@ fun HomeScreen(onNavigateToSearch: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(10.dp))
 
+            val loading = averageState is AverageUiState.Loading
+            val data = (averageState as? AverageUiState.Success)?.data
+
             Row(modifier = Modifier.fillMaxWidth()) {
                 NationalAverageTile(
                     label = "Benzina",
-                    price = selectedCountry.avgBenzina,
+                    price = data?.nationalBenzina,
+                    loading = loading,
                     container = MaterialTheme.colorScheme.secondaryContainer,
                     onContainer = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.weight(1f)
@@ -81,7 +94,8 @@ fun HomeScreen(onNavigateToSearch: () -> Unit) {
                 Spacer(modifier = Modifier.width(12.dp))
                 NationalAverageTile(
                     label = "Diesel",
-                    price = selectedCountry.avgDiesel,
+                    price = data?.nationalDiesel,
+                    loading = loading,
                     container = MaterialTheme.colorScheme.tertiaryContainer,
                     onContainer = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier.weight(1f)
@@ -89,11 +103,52 @@ fun HomeScreen(onNavigateToSearch: () -> Unit) {
             }
 
             Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Media indicativa a livello nazionale.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+
+            when (val state = averageState) {
+                is AverageUiState.Loading -> Text(
+                    text = "Caricamento dei prezzi medi…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                is AverageUiState.Success -> {
+                    val caption = state.data.updated
+                        ?.let { "Media nazionale · aggiornato il $it" }
+                        ?: "Media nazionale indicativa."
+                    Text(
+                        text = caption,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                is AverageUiState.Error -> Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Impossibile caricare i prezzi medi.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    TextButton(onClick = { viewModel.loadAverages() }) {
+                        Text("Riprova")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedButton(
+                onClick = onNavigateToRegional,
+                enabled = data != null,
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+            ) {
+                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Prezzo per regione", fontWeight = FontWeight.SemiBold)
+            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -137,7 +192,7 @@ private fun CountrySelector(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
         )
         ExposedDropdownMenu(
             expanded = expanded,
@@ -160,6 +215,7 @@ private fun CountrySelector(
 private fun NationalAverageTile(
     label: String,
     price: Double?,
+    loading: Boolean,
     container: Color,
     onContainer: Color,
     modifier: Modifier = Modifier
@@ -172,14 +228,22 @@ private fun NationalAverageTile(
         Column(modifier = Modifier.padding(16.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium, color = onContainer)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = if (price != null) {
-                    "${String.format(Locale.ITALY, "%.3f", price)} €/l"
-                } else "N/A",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = onContainer
-            )
+            if (loading) {
+                CircularProgressIndicator(
+                    color = onContainer,
+                    strokeWidth = 2.dp,
+                    modifier = Modifier.size(24.dp)
+                )
+            } else {
+                Text(
+                    text = if (price != null) {
+                        "${String.format(Locale.ITALY, "%.3f", price)} €/l"
+                    } else "N/A",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = onContainer
+                )
+            }
         }
     }
 }

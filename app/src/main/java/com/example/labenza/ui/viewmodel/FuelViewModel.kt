@@ -2,9 +2,11 @@ package com.example.labenza.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.labenza.data.model.RegionalAverages
 import com.example.labenza.data.model.PlaceSuggestion
 import com.example.labenza.data.model.Station
 import com.example.labenza.data.model.SortOrder
+import com.example.labenza.data.repository.AveragePriceRepository
 import com.example.labenza.data.repository.FuelRepository
 import com.example.labenza.data.repository.GeocodingRepository
 import com.example.labenza.location.LocationHelper
@@ -32,14 +34,24 @@ sealed class FuelUiState {
     data class Error(val message: String) : FuelUiState()
 }
 
+sealed class AverageUiState {
+    object Loading : AverageUiState()
+    data class Success(val data: RegionalAverages) : AverageUiState()
+    object Error : AverageUiState()
+}
+
 class FuelViewModel(
     private val fuelRepository: FuelRepository,
     private val geocodingRepository: GeocodingRepository,
+    private val averagePriceRepository: AveragePriceRepository,
     private val locationHelper: LocationHelper
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FuelUiState>(FuelUiState.Idle)
     val uiState: StateFlow<FuelUiState> = _uiState.asStateFlow()
+
+    private val _averages = MutableStateFlow<AverageUiState>(AverageUiState.Loading)
+    val averages: StateFlow<AverageUiState> = _averages.asStateFlow()
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()
@@ -75,6 +87,16 @@ class FuelViewModel(
 
     init {
         observeQuery()
+        loadAverages()
+    }
+
+    fun loadAverages() {
+        viewModelScope.launch {
+            _averages.value = AverageUiState.Loading
+            averagePriceRepository.getRegionalAverages()
+                .onSuccess { _averages.value = AverageUiState.Success(it) }
+                .onFailure { _averages.value = AverageUiState.Error }
+        }
     }
 
     fun setSortOrder(order: SortOrder) {

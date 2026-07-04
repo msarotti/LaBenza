@@ -16,6 +16,9 @@ vendor-neutral `geo:` URI rather than a Maps-specific intent.
 
 ## Build & Test
 
+Android studio path is: ~/GitApps/android-studio/
+The JDK is contained in the Android Studio folder so search it here.
+
 ```bash
 ./gradlew assembleDebug          # build the debug APK
 ./gradlew installDebug           # build + install on a connected device/emulator

@@ -14,11 +14,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.labenza.data.repository.AveragePriceRepository
 import com.example.labenza.data.repository.FuelRepository
 import com.example.labenza.data.repository.GeocodingRepository
 import com.example.labenza.location.LocationHelper
 import com.example.labenza.ui.screens.HomeScreen
 import com.example.labenza.ui.screens.MainScreen
+import com.example.labenza.ui.screens.RegionalPricesScreen
 import com.example.labenza.ui.theme.LaBenzaTheme
 import com.example.labenza.ui.viewmodel.FuelViewModel
 
@@ -28,6 +30,7 @@ class MainActivity : ComponentActivity() {
         
         val repository = FuelRepository()
         val geocodingRepository = GeocodingRepository()
+        val averagePriceRepository = AveragePriceRepository()
         val locationHelper = LocationHelper(this)
         
         enableEdgeToEdge()
@@ -36,7 +39,12 @@ class MainActivity : ComponentActivity() {
                 val viewModel: FuelViewModel = viewModel(
                     factory = object : ViewModelProvider.Factory {
                         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                            return FuelViewModel(repository, geocodingRepository, locationHelper) as T
+                            return FuelViewModel(
+                                repository,
+                                geocodingRepository,
+                                averagePriceRepository,
+                                locationHelper
+                            ) as T
                         }
                     }
                 )
@@ -62,7 +70,17 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") {
-                        HomeScreen(onNavigateToSearch = { navController.navigate("search") })
+                        HomeScreen(
+                            viewModel = viewModel,
+                            onNavigateToSearch = { navController.navigate("search") },
+                            onNavigateToRegional = { navController.navigate("regional") }
+                        )
+                    }
+                    composable("regional") {
+                        RegionalPricesScreen(
+                            viewModel = viewModel,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                     composable("search") {
                         MainScreen(
