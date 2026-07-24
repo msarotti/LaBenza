@@ -1,11 +1,13 @@
 package com.example.labenza.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Coffee
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -14,9 +16,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.example.labenza.data.model.Country
 import com.example.labenza.data.model.FavoriteStation
 import com.example.labenza.ui.viewmodel.AverageUiState
@@ -38,6 +43,7 @@ fun HomeScreen(
     var selectedCountry by remember { mutableStateOf(Country.default) }
     val averageState by viewModel.averages.collectAsState()
     val favorites by viewModel.favorites.collectAsState()
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -224,10 +230,42 @@ fun HomeScreen(
                 Text("Cerca distributori", fontWeight = FontWeight.SemiBold)
             }
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            KofiButton(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, KOFI_URL.toUri())
+                    ContextCompat.startActivity(context, intent, null)
+                }
+            )
+
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
 }
+
+/** Ko-fi "Support me" button, styled in Ko-fi's brand blue (#72A4F2). */
+@Composable
+private fun KofiButton(onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = KOFI_BLUE,
+            contentColor = Color.White
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+    ) {
+        Icon(Icons.Default.Coffee, contentDescription = null)
+        Spacer(modifier = Modifier.width(8.dp))
+        Text("Support me on Ko-fi", fontWeight = FontWeight.SemiBold)
+    }
+}
+
+private val KOFI_BLUE = Color(0xFF72A4F2)
+private const val KOFI_URL = "https://ko-fi.com/Y3C423RFZ6"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
