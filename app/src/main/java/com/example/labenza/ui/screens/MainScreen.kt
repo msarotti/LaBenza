@@ -135,6 +135,14 @@ fun MainScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            SearchRadiusSlider(
+                radiusKm = viewModel.searchRadiusKm.collectAsState().value,
+                onRadiusChange = viewModel::onRadiusChange,
+                onRadiusChangeFinished = viewModel::onRadiusChangeFinished
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
             AnimatedVisibility(
                 visible = locationButtonVisible,
                 enter = expandVertically() + fadeIn(),
@@ -192,20 +200,63 @@ private fun SortOptions(
     ) {
         FilterChip(
             selected = currentOrder == SortOrder.PRICE_LOW_TO_HIGH,
-            onClick = { 
+            onClick = {
                 onOrderChange(if (currentOrder == SortOrder.PRICE_LOW_TO_HIGH) SortOrder.NONE else SortOrder.PRICE_LOW_TO_HIGH)
             },
-            label = { Text("Prezzo ↑") }
+            label = { Text("Min") }
         )
         FilterChip(
             selected = currentOrder == SortOrder.PRICE_HIGH_TO_LOW,
-            onClick = { 
+            onClick = {
                 onOrderChange(if (currentOrder == SortOrder.PRICE_HIGH_TO_LOW) SortOrder.NONE else SortOrder.PRICE_HIGH_TO_LOW)
             },
-            label = { Text("Prezzo ↓") }
+            label = { Text("Max") }
+        )
+        FilterChip(
+            selected = currentOrder == SortOrder.DISTANCE,
+            onClick = {
+                onOrderChange(if (currentOrder == SortOrder.DISTANCE) SortOrder.NONE else SortOrder.DISTANCE)
+            },
+            label = { Text("Distanza") }
         )
     }
 }
+
+@Composable
+private fun SearchRadiusSlider(
+    radiusKm: Int,
+    onRadiusChange: (Int) -> Unit,
+    onRadiusChangeFinished: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Raggio di ricerca",
+                style = MaterialTheme.typography.labelLarge
+            )
+            Text(
+                text = "$radiusKm km",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Slider(
+            value = radiusKm.toFloat(),
+            onValueChange = { onRadiusChange(it.toInt()) },
+            onValueChangeFinished = onRadiusChangeFinished,
+            valueRange = RADIUS_MIN_KM.toFloat()..RADIUS_MAX_KM.toFloat(),
+            steps = RADIUS_MAX_KM - RADIUS_MIN_KM - 1
+        )
+    }
+}
+
+private const val RADIUS_MIN_KM = 1
+private const val RADIUS_MAX_KM = 25
 
 @Composable
 private fun SuggestionsList(

@@ -69,6 +69,12 @@ class FuelViewModel(
     private val _sortOrder = MutableStateFlow<SortOrder>(SortOrder.NONE)
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
 
+    private val _searchRadiusKm = MutableStateFlow(FuelRepository.DEFAULT_RADIUS_KM)
+    val searchRadiusKm: StateFlow<Int> = _searchRadiusKm.asStateFlow()
+
+    // The last location a search was run for, so we can re-run when the radius changes.
+    private var lastLocation: LocationInfo? = null
+
     // Set to true right after a suggestion is picked, to suppress re-querying that text.
     private var suppressNextQuery = false
 
@@ -125,6 +131,23 @@ class FuelViewModel(
         }
     }
 
+    /** Updates the search radius as the slider is dragged (no network call yet). */
+    fun onRadiusChange(radiusKm: Int) {
+        _searchRadiusKm.value = radiusKm
+    }
+
+    /**
+     * Re-runs the current search with the new radius once the slider is released.
+     * Does nothing if no search has been run yet.
+     */
+    fun onRadiusChangeFinished() {
+        val location = lastLocation ?: return
+        viewModelScope.launch {
+            _uiState.value = FuelUiState.Loading
+            fetchPrices(location)
+        }
+    }
+
     fun setSortOrder(order: SortOrder) {
         _sortOrder.value = order
         // Re-apply sorting to the current state if it's Success
@@ -140,6 +163,7 @@ class FuelViewModel(
         return when (order) {
             SortOrder.PRICE_LOW_TO_HIGH -> stations.sortedBy { it.benzinaPrice ?: Double.MAX_VALUE }
             SortOrder.PRICE_HIGH_TO_LOW -> stations.sortedByDescending { it.benzinaPrice ?: Double.MIN_VALUE }
+            SortOrder.DISTANCE -> stations.sortedBy { it.distanceKm ?: Double.MAX_VALUE }
             else -> stations
         }
     }
@@ -185,7 +209,8 @@ class FuelViewModel(
     }
 
     private suspend fun fetchPrices(location: LocationInfo) {
-        fuelRepository.getNearbyStations(location.lat, location.lng)
+        lastLocation = location
+        fuelRepository.getNearbyStations(location.lat, location.lng, _searchRadiusKm.value)
             .onSuccess { stations ->
                 val sortedStations = sortStations(stations, _sortOrder.value)
 
