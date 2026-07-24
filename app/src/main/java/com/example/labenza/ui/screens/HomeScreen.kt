@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import com.example.labenza.data.model.Country
@@ -239,9 +240,29 @@ fun HomeScreen(
                 }
             )
 
+            Spacer(modifier = Modifier.height(12.dp))
+
+            DataSourceNotice()
+
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
+}
+
+/** Attribution for the MIMIT open data used by the app, required by the IODL licence. */
+@Composable
+private fun DataSourceNotice() {
+    Text(
+        text = "Dati sui prezzi dei carburanti forniti dal MIMIT — Ministero delle " +
+            "Imprese e del Made in Italy (Osservaprezzi Carburanti) e distribuiti " +
+            "con licenza IODL — Italian Open Data License 2.0.",
+        style = MaterialTheme.typography.bodySmall,
+        fontSize = 10.sp,
+        lineHeight = 13.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 /** Ko-fi "Support me" button, styled in Ko-fi's brand blue (#72A4F2). */
