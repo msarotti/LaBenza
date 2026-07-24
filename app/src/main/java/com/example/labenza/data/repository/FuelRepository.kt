@@ -9,25 +9,28 @@ import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
-class FuelRepository {
+/**
+ * Talks to the official MIMIT "Osservaprezzi Carburanti" backend. [baseUrl] is
+ * overridable so tests can point it at a local mock server.
+ */
+class FuelRepository(
+    baseUrl: String = FuelPriceApi.BASE_URL
+) : FuelDataSource {
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
     }
 
     private val api = Retrofit.Builder()
-        .baseUrl(FuelPriceApi.BASE_URL)
+        .baseUrl(baseUrl)
         .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
         .build()
         .create(FuelPriceApi::class.java)
 
-    /**
-     * Returns the stations within [radiusKm] km of ([lat], [lng]), sorted by distance.
-     */
-    suspend fun getNearbyStations(
+    override suspend fun getNearbyStations(
         lat: Double,
         lng: Double,
-        radiusKm: Int = DEFAULT_RADIUS_KM
+        radiusKm: Int
     ): Result<List<Station>> {
         return try {
             val response = api.searchZone(
@@ -41,9 +44,5 @@ class FuelRepository {
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    companion object {
-        const val DEFAULT_RADIUS_KM = 5
     }
 }

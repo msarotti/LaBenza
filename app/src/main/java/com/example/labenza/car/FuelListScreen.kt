@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.labenza.data.model.Station
 import com.example.labenza.data.model.SortOrder
+import com.example.labenza.data.repository.FuelDataSource
 import com.example.labenza.data.repository.FuelRepository
 import com.example.labenza.location.LocationHelper
 import com.example.labenza.ui.screens.SortOptionScreen
@@ -32,7 +33,7 @@ import java.util.Locale
  */
 class FuelListScreen(carContext: CarContext) : Screen(carContext) {
 
-    private val fuelRepository = FuelRepository()
+    private val fuelRepository: FuelDataSource = FuelRepository()
     private val locationHelper = LocationHelper(carContext)
 
     private sealed class State {

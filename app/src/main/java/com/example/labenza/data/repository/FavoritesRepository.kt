@@ -11,13 +11,13 @@ import kotlinx.serialization.json.Json
  * Persists the user's favorite stations as a JSON list in [SharedPreferences].
  * Kept intentionally simple (no DB dependency) to match the app's data layer.
  */
-class FavoritesRepository(context: Context) {
+class FavoritesRepository(context: Context) : FavoritesDataSource {
     private val prefs: SharedPreferences =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun load(): List<FavoriteStation> {
+    override fun load(): List<FavoriteStation> {
         val raw = prefs.getString(KEY_STATIONS, null) ?: return emptyList()
         return try {
             json.decodeFromString(raw)
@@ -26,7 +26,7 @@ class FavoritesRepository(context: Context) {
         }
     }
 
-    fun save(favorites: List<FavoriteStation>) {
+    override fun save(favorites: List<FavoriteStation>) {
         prefs.edit().putString(KEY_STATIONS, json.encodeToString(favorites)).apply()
     }
 

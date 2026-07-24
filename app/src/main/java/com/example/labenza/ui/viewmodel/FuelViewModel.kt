@@ -8,11 +8,11 @@ import com.example.labenza.data.model.PlaceSuggestion
 import com.example.labenza.data.model.Station
 import com.example.labenza.data.model.SortOrder
 import com.example.labenza.data.model.toFavorite
-import com.example.labenza.data.repository.AveragePriceRepository
-import com.example.labenza.data.repository.FavoritesRepository
-import com.example.labenza.data.repository.FuelRepository
-import com.example.labenza.data.repository.GeocodingRepository
-import com.example.labenza.location.LocationHelper
+import com.example.labenza.data.repository.AveragePriceDataSource
+import com.example.labenza.data.repository.FavoritesDataSource
+import com.example.labenza.data.repository.FuelDataSource
+import com.example.labenza.data.repository.GeocodingDataSource
+import com.example.labenza.location.LocationProvider
 import com.example.labenza.location.LocationInfo
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,11 +44,11 @@ sealed class AverageUiState {
 }
 
 class FuelViewModel(
-    private val fuelRepository: FuelRepository,
-    private val geocodingRepository: GeocodingRepository,
-    private val averagePriceRepository: AveragePriceRepository,
-    private val favoritesRepository: FavoritesRepository,
-    private val locationHelper: LocationHelper
+    private val fuelRepository: FuelDataSource,
+    private val geocodingRepository: GeocodingDataSource,
+    private val averagePriceRepository: AveragePriceDataSource,
+    private val favoritesRepository: FavoritesDataSource,
+    private val locationHelper: LocationProvider
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<FuelUiState>(FuelUiState.Idle)
@@ -69,7 +69,7 @@ class FuelViewModel(
     private val _sortOrder = MutableStateFlow<SortOrder>(SortOrder.NONE)
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
 
-    private val _searchRadiusKm = MutableStateFlow(FuelRepository.DEFAULT_RADIUS_KM)
+    private val _searchRadiusKm = MutableStateFlow(FuelDataSource.DEFAULT_RADIUS_KM)
     val searchRadiusKm: StateFlow<Int> = _searchRadiusKm.asStateFlow()
 
     // The last location a search was run for, so we can re-run when the radius changes.

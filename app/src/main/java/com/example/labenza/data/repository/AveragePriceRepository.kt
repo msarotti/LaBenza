@@ -6,7 +6,7 @@ import com.example.labenza.data.model.RegionalAverages
 import com.example.labenza.data.model.RegionalFuel
 import retrofit2.Retrofit
 
-class AveragePriceRepository {
+class AveragePriceRepository : AveragePriceDataSource {
     private val api = Retrofit.Builder()
         .baseUrl(AveragePriceApi.BASE_URL)
         .build()
@@ -16,7 +16,7 @@ class AveragePriceRepository {
      * Fetches the regional-average CSV and parses it into per-region fuel rows.
      * National figures are derived from these (see [RegionalAverages]).
      */
-    suspend fun getRegionalAverages(): Result<RegionalAverages> {
+    override suspend fun getRegionalAverages(): Result<RegionalAverages> {
         return try {
             val csv = api.getRegionalAverages().string()
             Result.success(parse(csv))

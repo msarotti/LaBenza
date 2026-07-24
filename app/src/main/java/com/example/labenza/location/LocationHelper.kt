@@ -24,13 +24,13 @@ data class LocationInfo(
  * Obtains the device location using the AOSP [LocationManager] only — no Google
  * Play Services — so it works on de-Googled devices.
  */
-class LocationHelper(context: Context) {
+class LocationHelper(context: Context) : LocationProvider {
     private val locationManager =
         context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
     /** Returns (lat, lng) of the current position, or null if unavailable. */
     @SuppressLint("MissingPermission")
-    suspend fun getCurrentCoordinates(): Pair<Double, Double>? {
+    override suspend fun getCurrentCoordinates(): Pair<Double, Double>? {
         lastKnownLocation()?.let { return it.latitude to it.longitude }
         val fresh = withTimeoutOrNull(FIX_TIMEOUT_MS) { requestSingleFix() }
         return fresh?.let { it.latitude to it.longitude }

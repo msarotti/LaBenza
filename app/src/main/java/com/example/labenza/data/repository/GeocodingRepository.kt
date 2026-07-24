@@ -9,7 +9,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 
-class GeocodingRepository {
+class GeocodingRepository : GeocodingDataSource {
     private val json = Json {
         ignoreUnknownKeys = true
         coerceInputValues = true
@@ -22,7 +22,7 @@ class GeocodingRepository {
         .create(GeocodingApi::class.java)
 
     /** Autocomplete suggestions for a typed query. Returns empty list on error. */
-    suspend fun autocomplete(query: String): List<PlaceSuggestion> {
+    override suspend fun autocomplete(query: String): List<PlaceSuggestion> {
         return try {
             api.search(query).map {
                 PlaceSuggestion(
@@ -37,7 +37,7 @@ class GeocodingRepository {
     }
 
     /** Human-readable label for a coordinate, or null on error. */
-    suspend fun reverse(lat: Double, lng: Double): String? {
+    override suspend fun reverse(lat: Double, lng: Double): String? {
         return try {
             api.reverse(lat, lng).cityLabel()
         } catch (e: Exception) {
