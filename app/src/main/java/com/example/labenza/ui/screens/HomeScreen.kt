@@ -1,6 +1,7 @@
 package com.example.labenza.ui.screens
 
 import android.content.Intent
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -230,9 +231,9 @@ fun HomeScreen(
                 Text("Cerca distributori", fontWeight = FontWeight.SemiBold)
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            KofiButton(
+            KofiLink(
                 onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, KOFI_URL.toUri())
                     ContextCompat.startActivity(context, intent, null)
@@ -244,27 +245,31 @@ fun HomeScreen(
     }
 }
 
-/** Ko-fi "Support me" button, styled in Ko-fi's brand blue (#72A4F2). */
+/** Understated Ko-fi link, kept visible but out of the way of the primary actions. */
 @Composable
-private fun KofiButton(onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = KOFI_BLUE,
-            contentColor = Color.White
-        ),
+private fun KofiLink(onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
+            .clickable(onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Default.Coffee, contentDescription = null)
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Support me on Ko-fi", fontWeight = FontWeight.SemiBold)
+        Icon(
+            Icons.Default.Coffee,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = "Supportami su Ko-fi",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
-private val KOFI_BLUE = Color(0xFF72A4F2)
 private const val KOFI_URL = "https://ko-fi.com/Y3C423RFZ6"
 
 @OptIn(ExperimentalMaterial3Api::class)
